@@ -13,6 +13,38 @@ bool isOnGround(AnimData data, int windowHeight)
 {
     return data.pos.y >= windowHeight - data.rec.height;
 }
+AnimData updateAnimData(AnimData data, int deltaTime, int maxFrame_x, bool isXOnlyTexture, int maxFrame_y, int maxFrame_xend)
+{
+    //data.runningTime += deltaTime;
+    if(isXOnlyTexture == true){
+        if(data.runningTime >= data.updateTime){
+            data.runningTime = 0.0;
+            data.rec.x = data.frame * data.rec.width;
+            data.frame++;
+            if(data.frame > maxFrame_x){
+                data.frame = 0;
+            }
+        }
+    }
+    else{
+        if(data.runningTime >= data.updateTime){
+            data.rec.x = data.frame * data.rec.width;
+            data.rec.y = data.frame_y * data.rec.height;
+            data.runningTime = 0.0;
+            data.frame++;
+            if(data.frame > maxFrame_x){
+                data.frame = 0;
+                data.frame_y++;
+            }
+            if(data.frame_y > maxFrame_y && data.frame > maxFrame_xend){
+                data.frame_y = 0;
+                data.frame = 0;
+            }
+        }
+    }
+
+    return data;
+}
 int main(){
     const float windowDimension[2] = {512,380};
     InitWindow(windowDimension[0], windowDimension[1], "Dapper Dasher by Vlad Baranov");
@@ -68,7 +100,10 @@ int main(){
     //nubula velocity pixels/second
     int nebVel{-90};
 
+    Vector2 bgPos{0.0, 0.0};
 
+    //background
+    Texture2D background = LoadTexture("textures/far-buildings.png");
     SetTargetFPS(60);
 
     while(!WindowShouldClose()){
@@ -77,6 +112,8 @@ int main(){
 
         BeginDrawing();
         ClearBackground(WHITE);
+
+        DrawTextureEx(background, bgPos, 0.0, 2.0, WHITE);
         
         if(isOnGround(scarfyData, windowDimension[1]))
         {
@@ -103,25 +140,14 @@ int main(){
             
             if (nubulae[i].pos.x + nubulae[i].rec.width >= 0 && nubulae[i].pos.x <= windowDimension[0]) {
                 nubulae[i].pos.x += nebVel * dT;
-            
+
             //nebula animation update 1
-                nubulae[i].runningTime += dT;
-                if(nubulae[i].runningTime >= nubulae[i].updateTime){
-                    nubulae[i].rec.x = nubulae[i].frame*nubulae[i].rec.width;
-                    nubulae[i].rec.y = nubulae[i].frame_y*nubulae[i].rec.height;
-                    nubulae[i].runningTime = 0.0;
-                    nubulae[i].frame++;
-                    if(nubulae[i].frame > 7){
-                        nubulae[i].frame = 0;
-                        nubulae[i].frame_y++;
-                    }
-                    if(nubulae[i].frame_y > 6 && nubulae[i].frame > 3)
-                    {
-                        nubulae[i].frame_y = 0;
-                        nubulae[i].frame = 0;
-                    }
-                }
+                nubulae[i].runningTime += dT; //for some reason without this it does not work not sure why
+                nubulae[i] = updateAnimData(nubulae[i], dT, 7, false, 6, 3);
+                
+
                 DrawTextureRec(nebula, nubulae[i].rec, nubulae[i].pos, WHITE);
+
             }
             else{nubulae[i].pos.x += nebVel * dT;}
             
@@ -132,18 +158,9 @@ int main(){
         scarfyData.pos.y += velocity * dT;
 
         //animation update scarfyFrame
-        if(!isInAir)
+        if(isOnGround(scarfyData, windowDimension[1]))
         {
-            scarfyData.rec.x = scarfyData.frame*scarfyData.rec.width;
-            if(scarfyData.runningTime >= scarfyData.updateTime){
-            scarfyData.runningTime = 0.0;
-            scarfyData.frame++;
-                if(scarfyData.frame > 5){
-                    
-                    scarfyData.frame = 0;
-                }
-
-            }
+            scarfyData = updateAnimData(scarfyData, dT, 5, true, 0, 5);
         }
 
         //update running time
@@ -157,5 +174,6 @@ int main(){
     }
     UnloadTexture(scarfy);
     UnloadTexture(nebula);
+    UnloadTexture(background);
     CloseWindow();
 }

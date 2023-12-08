@@ -5,29 +5,6 @@
       "version": "0.2.0",
       "configurations": [
         {
-          "type": "amiga",
-          "request": "launch",
-          "name": "Ask for file name",
-          "config": "A500",
-          "program": "",
-          "kickstart": "<Enter path to KICKSTART 1.3 ROM here>"
-        },
-
-        {
-          "name": "Debug with CodeLLDB",
-          "type": "cppdbg",
-          "request": "launch",
-          "program": "${workspaceFolder}/${fileBasenameNoExtension}",
-          "args": [],
-          "stopAtEntry": false,
-          "cwd": "${workspaceFolder}",
-          "environment": [],
-          "externalConsole": false,
-          "MIMode": "lldb",
-          "MIDebuggerPath": "C:/Program Files/LLVM/bin/lldb.exe",
-          "preLaunchTask": "build debug"
-        },
-        {
           "name": "Debug",
           "type": "cppdbg",
           "request": "launch",
