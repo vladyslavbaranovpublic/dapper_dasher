@@ -9,6 +9,41 @@ struct AnimData
     float runningTime;
     int frame_y;
 };
+
+struct MovingBackData
+{
+    Texture2D texture;
+    float x;
+    Vector2 pos;
+};
+
+MovingBackData updateBackData(MovingBackData data, int speed, float deltaTime, int i, int windowDimension, int offset, int backgroundSizeOffset)
+{
+    data.x -= 32*speed * deltaTime;
+    data.pos={data.x, 0.0};
+    /*if(i==0){
+        data.pos={data.x, 0.0};
+    }
+    else{
+        data.pos={data.x + windowDimension*i, 0.0}; 
+    }*/
+      
+
+    if(data.x <= -offset)
+    {
+        data.x = offset;
+    }
+    return data;
+}
+MovingBackData initilizeSlidingImage(MovingBackData data, Texture2D texture, int offset, int i)
+{
+    data.texture = texture;
+    data.x = 0.0 + offset*i;
+    data.pos.x = 0.0 + offset*i;
+    data.pos.y = 0.0;
+    return data;
+}
+
 bool isOnGround(AnimData data, int windowHeight)
 {
     return data.pos.y >= windowHeight - data.rec.height;
@@ -90,7 +125,10 @@ int main(){
         nubulae[i].runningTime = 0.0;
         nubulae[i].updateTime = 1.0/16.0;
         nubulae[i].frame_y = 0;
+
+        nubulae[i].pos.x =  windowDimension[0] + i * 300;
     }
+    float finishLine( nubulae[sizeOfNebulae-1].pos.x);
 
     for(int i=0; i < sizeOfNebulae; i++)
         {
@@ -98,13 +136,30 @@ int main(){
         }
 
     //nubula velocity pixels/second
-    int nebVel{-90};
+    int nebVel{-250};
 
-    Vector2 bgPos{0.0, 0.0};
+    
 
     //background
     Texture2D background = LoadTexture("textures/far-buildings.png");
-    SetTargetFPS(60);
+    Texture2D midground = LoadTexture("textures/back-buildings.png");
+    Texture2D foreground = LoadTexture("textures/foreground.png");
+    
+    MovingBackData backgroundData[2]{};
+    MovingBackData midgroundData[2]{};
+    MovingBackData foregroundData[2]{};
+
+    for(int i = 0; i < 2; i++)
+    {
+        backgroundData[i]   = initilizeSlidingImage(backgroundData[i], background,background.width*2, i);
+        midgroundData[i]    = initilizeSlidingImage(midgroundData[i], midground, midground.width*2, i);
+        foregroundData[i]   = initilizeSlidingImage(foregroundData[i], foreground, foreground.width*2, i);
+        /*backgroundData[i].pos.x = windowDimension[0] * i;
+        midgroundData[i].pos.x = windowDimension[0] * i;
+        foregroundData[i].pos.x = windowDimension[0] * i;*/
+    }
+    bool collision{false};
+    SetTargetFPS(120);
 
     while(!WindowShouldClose()){
         const float dT{GetFrameTime()};
@@ -112,9 +167,24 @@ int main(){
 
         BeginDrawing();
         ClearBackground(WHITE);
-
-        DrawTextureEx(background, bgPos, 0.0, 2.0, WHITE);
         
+        //display background
+        for(int i = 0; i < 2; i++)
+        {
+            //update background, sends a call to update background data and within the call draws the background
+            backgroundData[i] = updateBackData(backgroundData[i], 1, dT, i, windowDimension[0], 512, 0);
+            DrawTextureEx(backgroundData[i].texture, backgroundData[i].pos, 0.0, 2.0, WHITE);
+        }
+        for(int i = 0; i < 2; i++)
+        {
+            midgroundData[i] = updateBackData(midgroundData[i], 2, dT, i, windowDimension[0], 512, 0);
+            DrawTextureEx(midgroundData[i].texture, midgroundData[i].pos, 0.0, 2.0, WHITE);
+        }
+        for(int i = 0; i < 2; i++)
+        {
+           foregroundData[i] = updateBackData(foregroundData[i], 4, dT, i, windowDimension[0], 704, 0);
+           DrawTextureEx(foregroundData[i].texture, foregroundData[i].pos, 0.0, 2.0, WHITE);
+        }
         if(isOnGround(scarfyData, windowDimension[1]))
         {
             isInAir = false;
@@ -135,23 +205,9 @@ int main(){
 
 
 
-        for(int i=0; i < sizeOfNebulae; i++)
-        {
-            
-            if (nubulae[i].pos.x + nubulae[i].rec.width >= 0 && nubulae[i].pos.x <= windowDimension[0]) {
-                nubulae[i].pos.x += nebVel * dT;
 
-            //nebula animation update 1
-                nubulae[i].runningTime += dT; //for some reason without this it does not work not sure why
-                nubulae[i] = updateAnimData(nubulae[i], dT, 7, false, 6, 3);
-                
 
-                DrawTextureRec(nebula, nubulae[i].rec, nubulae[i].pos, WHITE);
-
-            }
-            else{nubulae[i].pos.x += nebVel * dT;}
-            
-        }
+        finishLine += nebVel * dT;
 
 
         //update Y position of character
@@ -166,8 +222,58 @@ int main(){
         //update running time
         scarfyData.runningTime += dT;
 
-        // draw scarfy
-        DrawTextureRec(scarfy, scarfyData.rec, scarfyData.pos, WHITE);
+        for(AnimData& nubula : nubulae)
+        {
+            float pad{20.0};
+            Rectangle nebRec{
+                nubula.pos.x + pad,
+                nubula.pos.y + pad,
+                nubula.rec.width - pad*2,
+                nubula.rec.height - pad*2
+            };
+            Rectangle scarfyRec{
+                scarfyData.pos.x + pad,
+                scarfyData.pos.y + pad,
+                scarfyData.rec.width - pad*2,
+                scarfyData.rec.height - pad*2
+            };
+            if (CheckCollisionRecs(nebRec, scarfyRec))
+            {
+                collision = true;
+                
+            }
+        }
+        if(collision)
+        {
+            DrawText("Game Over", 200, 200, 20, RED);
+        }
+        else if(scarfyData.pos.x >= finishLine){
+            DrawText("You Win", 200, 200, 20, RED);
+        }
+        else{
+            for(int i=0; i < sizeOfNebulae; i++){
+            
+                if (nubulae[i].pos.x + nubulae[i].rec.width >= 0 && nubulae[i].pos.x <= windowDimension[0]) {
+                    nubulae[i].pos.x += nebVel * dT;
+
+                //nebula animation update 1
+                    nubulae[i].runningTime += dT; //for some reason without this it does not work not sure why
+                    nubulae[i] = updateAnimData(nubulae[i], dT, 7, false, 6, 3);
+                    
+
+                    DrawTextureRec(nebula, nubulae[i].rec, nubulae[i].pos, WHITE);
+
+                }
+                else{nubulae[i].pos.x += nebVel * dT;}
+            
+            }
+
+
+            // draw scarfy
+            DrawTextureRec(scarfy, scarfyData.rec, scarfyData.pos, WHITE);
+        }
+
+
 
 
         EndDrawing();
@@ -175,5 +281,7 @@ int main(){
     UnloadTexture(scarfy);
     UnloadTexture(nebula);
     UnloadTexture(background);
+    UnloadTexture(midground);
+    UnloadTexture(foreground);
     CloseWindow();
 }
